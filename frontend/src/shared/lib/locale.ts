@@ -3,11 +3,10 @@ export async function detectCountryByIPFallback(): Promise<string | null> {
     const response = await fetch('http://ip-api.com/json/', {
       method: 'GET',
     });
-    
+
     if (!response.ok) return null;
-    
+
     const data = await response.json();
-    console.log('🌐 IP-API Geolocation:', data.countryCode, data.city);
     return data.countryCode || null;
   } catch (error) {
     console.error('Failed to detect country by IP-API:', error);
@@ -21,11 +20,10 @@ export async function detectCountryByIP(): Promise<string | null> {
       method: 'GET',
       headers: { 'Accept': 'application/json' }
     });
-    
+
     if (!response.ok) return null;
-    
+
     const data = await response.json();
-    console.log('🌐 IPAPI.co Geolocation:', data.country_code, data.city);
     return data.country_code || null;
   } catch (error) {
     console.error('Failed to detect country by ipapi.co:', error);
@@ -109,37 +107,30 @@ export async function detectCountry(): Promise<string> {
   // Try IP-based detection first
   let country = await detectCountryByIP();
   if (country) {
-    console.log('✅ Country from ipapi.co:', country);
     return country;
   }
 
   country = await detectCountryByIPFallback();
   if (country) {
-    console.log('✅ Country from ip-api.com:', country);
     return country;
   }
 
   // Extract from timezone
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  console.log('🌍 Detecting from timezone:', timezone);
 
   country = extractCountryFromTimezone(timezone);
   if (country) {
-    console.log('✅ Country from timezone:', country);
     return country;
   }
 
   // Extract from locale as last resort
   const locale = navigator.language || "en-US";
-  console.log('🗣️ Trying browser locale:', locale);
 
   country = extractCountryFromLocale(locale);
   if (country) {
-    console.log('✅ Country from locale:', country);
     return country;
   }
 
-  console.log('⚠️ Defaulting to US');
   return "US";
 }
 

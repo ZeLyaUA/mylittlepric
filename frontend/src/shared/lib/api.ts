@@ -74,7 +74,6 @@ export async function getSessionMessages(
 
   // Handle 404 - session doesn't exist yet (new session before first message)
   if (response.status === 404) {
-    console.log("ℹ️ Session not found on server - returning empty messages (new session)");
     return {
       messages: [],
       session_id: sessionId,

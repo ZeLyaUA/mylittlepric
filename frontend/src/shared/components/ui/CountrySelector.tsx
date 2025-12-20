@@ -105,12 +105,12 @@ export function CountrySelector() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search countries..."
-              className="w-full px-3 py-2 rounded-md bg-secondary border border-border focus:border-primary focus:outline-none transition-colors text-sm"
+              className="w-full px-3 py-2 rounded-md bg-secondary border border-border focus:border-primary focus:outline-none transition-colors text-base"
             />
           </div>
 
           {/* Countries List */}
-          <div className="max-h-64 overflow-y-auto">
+          <div className="h-64 md:max-h-64 overflow-y-auto">
             {filteredCountries.length > 0 ? (
               filteredCountries.map((c) => (
                 <button

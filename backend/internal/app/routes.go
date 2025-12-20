@@ -124,6 +124,10 @@ func setupWebSocketRoutes(app *fiber.App, c *container.Container) {
 
 	app.Get("/ws", websocket.New(func(conn *websocket.Conn) {
 		wsHandler.HandleWebSocket(conn)
+	}, websocket.Config{
+		// Set read deadline to 60 seconds (should receive ping within this time)
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
 	}))
 }
 

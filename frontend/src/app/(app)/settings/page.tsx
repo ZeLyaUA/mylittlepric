@@ -131,7 +131,6 @@ export default function SettingsPage() {
     if (accessToken) {
       import("@/shared/lib/preferences-api")
         .then(({ PreferencesAPI }) => PreferencesAPI.updateUserPreferences({ theme: newTheme }))
-        .then(() => console.log("✅ Synced theme to server:", newTheme))
         .catch((error) => {
           console.error("Failed to sync theme preference:", error);
           // Could show a toast notification here if needed

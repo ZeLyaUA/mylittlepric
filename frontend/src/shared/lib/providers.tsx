@@ -14,7 +14,6 @@ function PreferencesSync() {
     // Also prevent duplicate calls using ref
     if (_hasHydrated && isAuthenticated && !syncingRef.current) {
       syncingRef.current = true;
-      console.log("🔄 Syncing preferences from server on app load...");
       syncPreferencesFromServer().finally(() => {
         syncingRef.current = false;
       });
