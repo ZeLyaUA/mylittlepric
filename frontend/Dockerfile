@@ -24,8 +24,8 @@ ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV NODE_ENV=production
 
-# Build Next.js application
-RUN npm run build
+# Build Next.js application (without turbopack for Docker)
+RUN npm run build:docker || npm run build:prod || npx next build
 
 # Production stage
 FROM node:20-alpine AS runner
