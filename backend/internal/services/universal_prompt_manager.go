@@ -40,19 +40,22 @@ func (upm *UniversalPromptManager) loadPrompts() {
 	upm.mu.Lock()
 	defer upm.mu.Unlock()
 
+	// Get base path - try current directory first, then root
+	basePath := getPromptBasePath()
+
 	// Load universal prompt (sent once on session start)
-	universalPath := "internal/services/prompts/universal_prompt.txt"
+	universalPath := basePath + "internal/services/prompts/universal_prompt.txt"
 	universalContent, err := os.ReadFile(universalPath)
 	if err != nil {
-		panic(fmt.Errorf("CRITICAL: Failed to load universal prompt: %w", err))
+		panic(fmt.Errorf("CRITICAL: Failed to load universal prompt from %s: %w", universalPath, err))
 	}
 	upm.universalPrompt = string(universalContent)
 
 	// Load mini-kernel (sent on every turn)
-	kernelPath := "internal/services/prompts/mini_kernel.txt"
+	kernelPath := basePath + "internal/services/prompts/mini_kernel.txt"
 	kernelContent, err := os.ReadFile(kernelPath)
 	if err != nil {
-		panic(fmt.Errorf("CRITICAL: Failed to load mini-kernel: %w", err))
+		panic(fmt.Errorf("CRITICAL: Failed to load mini-kernel from %s: %w", kernelPath, err))
 	}
 	upm.miniKernel = string(kernelContent)
 
@@ -450,4 +453,30 @@ func ptrFloat64Value(ptr *float64) float64 {
 		return 0
 	}
 	return *ptr
+}
+
+// getPromptBasePath determines the base path for loading prompt files
+// Tries multiple locations to support both development and Docker environments
+func getPromptBasePath() string {
+	// First, check if PROMPT_BASE_PATH env var is set
+	if basePath := os.Getenv("PROMPT_BASE_PATH"); basePath != "" {
+		return basePath
+	}
+
+	// Try different possible locations
+	possiblePaths := []string{
+		"",           // Current directory (for development)
+		"./",         // Explicit current directory
+		"/app/",      // Docker deployment
+	}
+
+	for _, path := range possiblePaths {
+		testPath := path + "internal/services/prompts/universal_prompt.txt"
+		if _, err := os.Stat(testPath); err == nil {
+			return path
+		}
+	}
+
+	// Default to current directory
+	return ""
 }

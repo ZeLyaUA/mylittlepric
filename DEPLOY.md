@@ -104,6 +104,9 @@ PORT=8080
 SERVER_ID=backend-1
 LOG_LEVEL=info
 
+# Prompts (optional - auto-detected in Docker)
+# PROMPT_BASE_PATH=/app/
+
 # Session
 DEFAULT_SESSION_TTL=24h
 ```
