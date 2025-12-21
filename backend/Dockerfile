@@ -15,6 +15,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api ./cmd/api/mai
 # Final stage
 FROM alpine:latest
 
+# Force rebuild - v2
 RUN apk --no-cache add ca-certificates tzdata
 
 RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
