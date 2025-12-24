@@ -45,7 +45,7 @@ func (h *ProductHandler) HandleProductDetails(c *fiber.Ctx) error {
 	}
 
 	startTime := time.Now()
-	productDetails, keyIndex, err := h.container.SerpService.GetProductDetailsByToken(req.PageToken)
+	productDetails, keyIndex, err := h.container.SerpService.GetProductDetailsByToken(c.UserContext(), req.PageToken)
 	responseTime := time.Since(startTime)
 
 	h.container.SerpRotator.RecordUsage(keyIndex, err == nil, responseTime)

@@ -295,9 +295,36 @@ The backend follows a **dependency injection container pattern** where all servi
 
 **Architecture:** Application (slog) → Promtail → Loki → Grafana
 
-**Structured Logging:** Uses Go's `slog` package with optional Loki integration
+**Structured Logging:** Uses Go's `slog` package with JSON format
 
 **Log Levels:** Configured via `LOG_LEVEL` environment variable (debug, info, warn, error)
+
+**Automatic Context Fields:**
+- `session_id`: Automatically included in all session-related logs
+- `user_id`: Automatically included for authenticated users
+- `request_id`: Unique identifier for each request
+
+**SERP API Logging:**
+All SERP searches are comprehensively logged with:
+- Search parameters (query, country, search_type, price range)
+- API key usage (key_index)
+- Performance metrics (duration_seconds)
+- Results (product_count, relevance_score, top_products)
+- Errors and retry attempts
+
+**Quick Start:**
+- View logs in Grafana: http://localhost:3001 → Explore → Loki
+- See query examples: [grafana/loki-queries.md](grafana/loki-queries.md)
+- Detailed guide: [docs/LOGGING.md](docs/LOGGING.md) (English)
+- Quick guide: [docs/LOGGING_RU.md](docs/LOGGING_RU.md) (Russian)
+
+**Example Query - Track User's Search:**
+```logql
+{compose_service="mylittleprice-backend"}
+  | json
+  | session_id = "YOUR_SESSION_ID"
+  |~ "SERP"
+```
 
 ### Grafana Dashboards
 
@@ -307,6 +334,7 @@ The backend follows a **dependency injection container pattern** where all servi
 - Pre-provisioned datasources (Prometheus, Loki)
 - Dashboard auto-loading from [grafana/dashboards/](grafana/dashboards/)
 - Query builder for custom metrics
+- Live log streaming for real-time debugging
 
 ## Important Patterns
 

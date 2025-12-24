@@ -2,7 +2,9 @@
 package services
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -33,7 +35,11 @@ func NewSerpService(keyRotator *utils.KeyRotator, cfg *config.Config) *SerpServi
 	}
 }
 
-func (s *SerpService) SearchProducts(query, searchType, country string, minPrice, maxPrice *float64) ([]models.ProductCard, int, error) {
+func (s *SerpService) SearchProducts(ctx context.Context, query, searchType, country string, minPrice, maxPrice *float64) ([]models.ProductCard, int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	// Validate input
 	if err := validateSearchQuery(query); err != nil {
 		return nil, -1, fmt.Errorf("invalid search query: %w", err)
@@ -45,6 +51,21 @@ func (s *SerpService) SearchProducts(query, searchType, country string, minPrice
 	var lastKeyIndex int = -1
 	var lastWasQuotaError bool = false
 
+	// Log initial search request
+	searchLogAttrs := []any{
+		slog.String("query", query),
+		slog.String("search_type", searchType),
+		slog.String("country", country),
+		slog.String("language", getLanguageForCountry(country)),
+	}
+	if minPrice != nil {
+		searchLogAttrs = append(searchLogAttrs, slog.Float64("min_price", *minPrice))
+	}
+	if maxPrice != nil {
+		searchLogAttrs = append(searchLogAttrs, slog.Float64("max_price", *maxPrice))
+	}
+	utils.LogInfo(ctx, "🔍 SERP search initiated", searchLogAttrs...)
+
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// Only apply backoff for network errors, not quota errors
 		if attempt > 0 && !lastWasQuotaError {
@@ -53,10 +74,17 @@ func (s *SerpService) SearchProducts(query, searchType, country string, minPrice
 			if backoffDuration > 2*time.Second {
 				backoffDuration = 2 * time.Second
 			}
-			fmt.Printf("   ⏳ SERP retry attempt %d/%d after %v...\n", attempt+1, maxRetries+1, backoffDuration)
+			utils.LogInfo(ctx, "⏳ SERP retry with backoff",
+				slog.Int("attempt", attempt+1),
+				slog.Int("max_attempts", maxRetries+1),
+				slog.Duration("backoff", backoffDuration),
+			)
 			time.Sleep(backoffDuration)
 		} else if attempt > 0 && lastWasQuotaError {
-			fmt.Printf("   🔄 Trying next key (attempt %d/%d)...\n", attempt+1, maxRetries+1)
+			utils.LogInfo(ctx, "🔄 SERP retry with next key",
+				slog.Int("attempt", attempt+1),
+				slog.Int("max_attempts", maxRetries+1),
+			)
 		}
 
 		apiKey, keyIndex, err := s.keyRotator.GetNextKey()
@@ -66,18 +94,9 @@ func (s *SerpService) SearchProducts(query, searchType, country string, minPrice
 		lastKeyIndex = keyIndex
 		lastWasQuotaError = false
 
-		// ✅ ЛОГИРУЕМ ОРИГИНАЛЬНЫЙ ЗАПРОС
-		if attempt == 0 {
-			fmt.Printf("\n🔍 SERP API Request:\n")
-			fmt.Printf("   Original Query: %s\n", query)
-			fmt.Printf("   Type: %s\n", searchType)
-			fmt.Printf("   Country: %s\n", country)
-			fmt.Printf("   Language: %s\n", getLanguageForCountry(country))
-			if minPrice != nil || maxPrice != nil {
-				fmt.Printf("   Price Range: %v - %v\n", minPrice, maxPrice)
-			}
+		if attempt > 0 {
+			utils.LogInfo(ctx, "Using API key", slog.Int("key_index", keyIndex))
 		}
-		fmt.Printf("   Key Index: %d (attempt %d)\n", keyIndex, attempt+1)
 
 		parameter := map[string]string{
 			"engine": "google_shopping",
@@ -102,7 +121,12 @@ func (s *SerpService) SearchProducts(query, searchType, country string, minPrice
 
 		if err != nil {
 			lastErr = err
-			fmt.Printf("   ❌ SERP API Error (%.2fs, attempt %d/%d): %v\n", elapsed.Seconds(), attempt+1, maxRetries+1, err)
+			utils.LogError(ctx, "❌ SERP API error", err,
+				slog.Float64("duration_seconds", elapsed.Seconds()),
+				slog.Int("attempt", attempt+1),
+				slog.Int("max_attempts", maxRetries+1),
+				slog.Int("key_index", keyIndex),
+			)
 
 			// Check if error is retryable
 			errMsg := err.Error()
@@ -118,9 +142,9 @@ func (s *SerpService) SearchProducts(query, searchType, country string, minPrice
 
 			if isQuotaError {
 				// Mark this key as exhausted
-				fmt.Printf("   ⚠️ Quota error detected for key %d\n", keyIndex)
+				utils.LogWarn(ctx, "⚠️ Quota error detected, marking key as exhausted", slog.Int("key_index", keyIndex))
 				if markErr := s.keyRotator.MarkKeyAsExhausted(keyIndex); markErr != nil {
-					fmt.Printf("   ⚠️ Failed to mark key as exhausted: %v\n", markErr)
+					utils.LogError(ctx, "Failed to mark key as exhausted", markErr, slog.Int("key_index", keyIndex))
 				}
 				// Try next key immediately (don't wait for backoff)
 				lastWasQuotaError = true
@@ -129,6 +153,7 @@ func (s *SerpService) SearchProducts(query, searchType, country string, minPrice
 				}
 			} else if isNetworkError {
 				// Retryable network error - continue to next attempt
+				utils.LogWarn(ctx, "Network error, retrying", slog.String("error_type", "network"))
 				if attempt < maxRetries {
 					continue
 				}
@@ -140,14 +165,17 @@ func (s *SerpService) SearchProducts(query, searchType, country string, minPrice
 
 		// Success!
 		if attempt > 0 {
-			fmt.Printf("   ✅ SERP request succeeded on attempt %d\n", attempt+1)
+			utils.LogInfo(ctx, "✅ SERP request succeeded on retry", slog.Int("attempt", attempt+1))
 		}
-		fmt.Printf("   ⏱️ Response time: %.2fs\n", elapsed.Seconds())
+		utils.LogInfo(ctx, "⏱️ SERP response received",
+			slog.Float64("duration_seconds", elapsed.Seconds()),
+			slog.Int("key_index", keyIndex),
+		)
 
 		shoppingItems := []domain.ShoppingItem{}
 
 		if shoppingResults, ok := data["shopping_results"].([]interface{}); ok {
-			fmt.Printf("   📦 Raw results: %d products\n", len(shoppingResults))
+			utils.LogInfo(ctx, "📦 Raw SERP results received", slog.Int("product_count", len(shoppingResults)))
 
 			for _, item := range shoppingResults {
 				if itemMap, ok := item.(map[string]interface{}); ok {
@@ -169,19 +197,32 @@ func (s *SerpService) SearchProducts(query, searchType, country string, minPrice
 				}
 			}
 		} else {
-			fmt.Printf("   ⚠️ No shopping_results in response\n")
+			utils.LogWarn(ctx, "⚠️ No shopping_results in SERP response")
 		}
 
 		result := s.validateRelevance(query, shoppingItems, searchType)
 
 		if !result.IsRelevant {
-			fmt.Printf("   ⚠️ No relevant results for '%s' (score: %.2f)\n", query, result.RelevanceScore)
+			utils.LogWarn(ctx, "⚠️ No relevant products found",
+				slog.String("query", query),
+				slog.Float64("relevance_score", float64(result.RelevanceScore)),
+			)
 			return nil, keyIndex, fmt.Errorf("no relevant products found")
 		}
 
 		cards := s.convertToProductCards(result.Products, searchType)
 
-		fmt.Printf("   ✅ Found %d relevant products (score: %.2f)\n\n", len(cards), result.RelevanceScore)
+		// Log final results with product details
+		productNames := make([]string, 0, min(3, len(cards)))
+		for i := 0; i < min(3, len(cards)); i++ {
+			productNames = append(productNames, cards[i].Name)
+		}
+
+		utils.LogInfo(ctx, "✅ SERP search completed successfully",
+			slog.Int("product_count", len(cards)),
+			slog.Float64("relevance_score", float64(result.RelevanceScore)),
+			slog.Any("top_products", productNames),
+		)
 
 		return cards, keyIndex, nil
 	}
@@ -213,19 +254,6 @@ func (s *SerpService) validateRelevance(query string, items []domain.ShoppingIte
 	productCount := min(maxProducts, len(items))
 	for i := 0; i < productCount; i++ {
 		relevantProducts = append(relevantProducts, items[i])
-	}
-
-	// ✅ Логируем взятые товары
-	fmt.Printf("   📊 Taking products at positions 1-%d (total available: %d):\n", productCount, len(items))
-	for i := 0; i < min(5, productCount); i++ {
-		title := items[i].Title
-		if len(title) > 60 {
-			title = title[:60] + "..."
-		}
-		fmt.Printf("      Position %d: %s\n", i+1, title)
-	}
-	if productCount > 5 {
-		fmt.Printf("      ... and %d more\n", productCount-5)
 	}
 
 	// Считаем релевантным если есть хоть какие-то продукты
@@ -417,11 +445,16 @@ func isCommonWord(word string) bool {
 	return false
 }
 
-func (s *SerpService) GetProductDetailsByToken(pageToken string) (map[string]interface{}, int, error) {
+func (s *SerpService) GetProductDetailsByToken(ctx context.Context, pageToken string) (map[string]interface{}, int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	maxRetries := s.keyRotator.GetTotalKeys() + 1
 	var lastErr error
 	var lastKeyIndex int = -1
 	var lastWasQuotaError bool = false
+
+	utils.LogInfo(ctx, "🔍 Fetching product details", slog.String("page_token", pageToken))
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 && !lastWasQuotaError {
@@ -429,10 +462,15 @@ func (s *SerpService) GetProductDetailsByToken(pageToken string) (map[string]int
 			if backoffDuration > 2*time.Second {
 				backoffDuration = 2 * time.Second
 			}
-			fmt.Printf("   ⏳ Product details retry attempt %d/%d after %v...\n", attempt+1, maxRetries+1, backoffDuration)
+			utils.LogInfo(ctx, "⏳ Product details retry with backoff",
+				slog.Int("attempt", attempt+1),
+				slog.Duration("backoff", backoffDuration),
+			)
 			time.Sleep(backoffDuration)
 		} else if attempt > 0 && lastWasQuotaError {
-			fmt.Printf("   🔄 Trying next key for product details (attempt %d/%d)...\n", attempt+1, maxRetries+1)
+			utils.LogInfo(ctx, "🔄 Product details retry with next key",
+				slog.Int("attempt", attempt+1),
+			)
 		}
 
 		apiKey, keyIndex, err := s.keyRotator.GetNextKey()
@@ -455,7 +493,11 @@ func (s *SerpService) GetProductDetailsByToken(pageToken string) (map[string]int
 
 		if err != nil {
 			lastErr = err
-			fmt.Printf("   ❌ Product details error (%.2fs, attempt %d/%d): %v\n", elapsed.Seconds(), attempt+1, maxRetries+1, err)
+			utils.LogError(ctx, "❌ Product details API error", err,
+				slog.Float64("duration_seconds", elapsed.Seconds()),
+				slog.Int("attempt", attempt+1),
+				slog.Int("key_index", keyIndex),
+			)
 
 			errMsg := err.Error()
 			isQuotaError := strings.Contains(errMsg, "run out of searches") ||
@@ -469,9 +511,9 @@ func (s *SerpService) GetProductDetailsByToken(pageToken string) (map[string]int
 				strings.Contains(errMsg, "500")
 
 			if isQuotaError {
-				fmt.Printf("   ⚠️ Quota error detected for key %d\n", keyIndex)
+				utils.LogWarn(ctx, "⚠️ Quota error for product details", slog.Int("key_index", keyIndex))
 				if markErr := s.keyRotator.MarkKeyAsExhausted(keyIndex); markErr != nil {
-					fmt.Printf("   ⚠️ Failed to mark key as exhausted: %v\n", markErr)
+					utils.LogError(ctx, "Failed to mark key as exhausted", markErr)
 				}
 				lastWasQuotaError = true
 				if attempt < maxRetries {
@@ -488,8 +530,9 @@ func (s *SerpService) GetProductDetailsByToken(pageToken string) (map[string]int
 
 		// Success!
 		if attempt > 0 {
-			fmt.Printf("   ✅ Product details request succeeded on attempt %d\n", attempt+1)
+			utils.LogInfo(ctx, "✅ Product details request succeeded on retry", slog.Int("attempt", attempt+1))
 		}
+		utils.LogInfo(ctx, "✅ Product details fetched", slog.Float64("duration_seconds", elapsed.Seconds()))
 		return data, keyIndex, nil
 	}
 
@@ -592,11 +635,15 @@ func getLanguageForCountry(country string) string {
 	return "en"
 }
 
-func (s *SerpService) GetProductByPageToken(pageToken string) (map[string]interface{}, int, error) {
-	return s.GetProductDetailsByToken(pageToken)
+func (s *SerpService) GetProductByPageToken(ctx context.Context, pageToken string) (map[string]interface{}, int, error) {
+	return s.GetProductDetailsByToken(ctx, pageToken)
 }
 
-func (s *SerpService) SearchWithCache(query, searchType, country string, minPrice, maxPrice *float64, cacheService *CacheService) ([]models.ProductCard, int, error) {
+func (s *SerpService) SearchWithCache(ctx context.Context, query, searchType, country string, minPrice, maxPrice *float64, cacheService *CacheService) ([]models.ProductCard, int, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	// Build cache key including price range
 	cacheKey := fmt.Sprintf("search:%s:%s:%s", country, searchType, query)
 	if minPrice != nil {
@@ -608,11 +655,12 @@ func (s *SerpService) SearchWithCache(query, searchType, country string, minPric
 
 	if cacheService != nil {
 		if cached, err := cacheService.GetSearchResults(cacheKey); err == nil && cached != nil {
+			utils.LogInfo(ctx, "📦 Using cached SERP results", slog.String("cache_key", cacheKey))
 			return cached, -1, nil
 		}
 	}
 
-	cards, keyIndex, err := s.SearchProducts(query, searchType, country, minPrice, maxPrice)
+	cards, keyIndex, err := s.SearchProducts(ctx, query, searchType, country, minPrice, maxPrice)
 	if err != nil {
 		return nil, keyIndex, err
 	}

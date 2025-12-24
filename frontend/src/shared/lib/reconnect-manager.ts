@@ -44,13 +44,9 @@ export class ReconnectManager {
     this.isRecovering = true;
 
     try {
-      console.log("🔄 Attempting to recover missed messages since:", this.lastMessageTimestamp.toISOString());
-
       const response = await getMessagesSince(sessionId, this.lastMessageTimestamp);
 
       if (response.message_count > 0) {
-        console.log(`✅ Recovered ${response.message_count} missed messages`);
-
         // Update last message timestamp to the most recent message
         if (response.messages.length > 0) {
           const lastMessage = response.messages[response.messages.length - 1];
@@ -58,8 +54,6 @@ export class ReconnectManager {
             this.lastMessageTimestamp = new Date(lastMessage.timestamp);
           }
         }
-      } else {
-        console.log("✅ No missed messages to recover");
       }
 
       return response.messages;

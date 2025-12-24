@@ -67,6 +67,12 @@ func (p *ChatProcessor) ProcessChat(req *ChatRequest) *ChatProcessorResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	// Add session_id and user_id to context for structured logging
+	ctx = utils.WithSessionID(ctx, req.SessionID)
+	if req.UserID != nil {
+		ctx = utils.WithUserID(ctx, req.UserID.String())
+	}
+
 	// Track metrics for message processing
 	start := time.Now()
 	status := "success"
@@ -719,6 +725,7 @@ func (p *ChatProcessor) performSearch(geminiResp *models.GeminiResponse, country
 	utils.LogInfo(ctx, "sending to SERP", slog.String("query", translatedQuery))
 
 	products, _, err := p.container.SerpService.SearchWithCache(
+		ctx,
 		translatedQuery,
 		geminiResp.SearchType,
 		country,

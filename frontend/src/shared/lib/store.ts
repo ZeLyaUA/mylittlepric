@@ -111,23 +111,13 @@ export const useChatStore = create<ChatStore>()(
 
       addMessage: (message) =>
         set((state) => {
-          console.log("📝 addMessage called:", {
-            messageId: message.id,
-            role: message.role,
-            content: message.content.substring(0, 50),
-            currentMessageCount: state.messages.length,
-            stackTrace: new Error().stack?.split('\n').slice(1, 5).join('\n')
-          });
-
           // Check for duplicate message IDs to prevent duplicate messages
           const isDuplicate = state.messages.some((m) => m.id === message.id);
           if (isDuplicate) {
-            console.log("⚠️ Skipping duplicate message with id:", message.id);
             return state; // No state change
           }
 
           const newMessages = [...state.messages, message];
-          console.log("📝 After addMessage, total messages:", newMessages.length);
           return {
             messages: newMessages,
             lastMessageTimestamp: new Date(),
@@ -135,7 +125,6 @@ export const useChatStore = create<ChatStore>()(
         }),
 
       setMessages: (messages) => {
-        console.log("🔄 setMessages called with", messages.length, "messages");
         set({ messages });
       },
 
@@ -178,7 +167,6 @@ export const useChatStore = create<ChatStore>()(
       },
 
       newSearch: () => {
-        console.log("🆕 newSearch called - clearing all messages");
         set({
           messages: [],
           searchInProgress: false,
@@ -208,20 +196,15 @@ export const useChatStore = create<ChatStore>()(
 
       loadSessionMessages: async (sessionId: string) => {
         if (!sessionId) {
-          console.warn("loadSessionMessages called with empty sessionId");
           return;
         }
 
         try {
-          console.log("🔄 Loading messages for session:", sessionId);
           const { getSessionMessages } = await import("./api");
           const response = await getSessionMessages(sessionId);
 
-          console.log("✅ Received", response.messages?.length || 0, "messages from API");
-
           // Handle case where session is new and has no messages yet
           if (!response.messages || response.messages.length === 0) {
-            console.log("📭 Session is empty (new session or no messages yet)");
             set({
               messages: [],
               showSavedSearchPrompt: false, // Clear prompt for empty session to show welcome
@@ -247,13 +230,10 @@ export const useChatStore = create<ChatStore>()(
               const isDuplicate = acc.some((m) => m.id === msg.id);
               if (!isDuplicate) {
                 acc.push(msg);
-              } else {
-                console.log("⚠️ Skipping duplicate message from server:", msg.id);
               }
               return acc;
             }, [] as ChatMessage[]);
 
-            console.log("✅ Setting", uniqueMessages.length, "unique messages in store (from", chatMessages.length, "total)");
             set({ messages: uniqueMessages });
 
             // Restore search state from server response
@@ -285,14 +265,9 @@ export const useChatStore = create<ChatStore>()(
               currentCategory: category,
               searchInProgress: hasActiveSearch,
             });
-
-            console.log("✅ Session restored with", chatMessages.length, "messages",
-                       hasActiveSearch ? "(with active search)" : "(no active search)");
           }
         } catch (error) {
           // This is expected for new sessions that don't exist on server yet
-          console.log("ℹ️ Session messages not available:", error instanceof Error ? error.message : String(error));
-          console.log("ℹ️ Continuing with empty session (this is OK for new sessions)");
           // Don't throw - this is not critical if it's a new session
           // Just keep current state and let user start fresh
           set({
@@ -454,7 +429,6 @@ export const useChatStore = create<ChatStore>()(
 
             if (Object.keys(updates).length > 0) {
               set(updates);
-              console.log("✅ Synced preferences from server:", updates);
             }
           }
         } catch (error) {
@@ -474,7 +448,6 @@ export const useChatStore = create<ChatStore>()(
           };
 
           await PreferencesAPI.updateUserPreferences(update);
-          console.log("✅ Synced preferences to server:", update);
         } catch (error) {
           console.error("Failed to sync preferences to server:", error);
         }
@@ -491,15 +464,6 @@ export const useChatStore = create<ChatStore>()(
       checkSavedSearchPrompt: () => {
         const state = get();
 
-        console.log("🔍 checkSavedSearchPrompt called:", {
-          hasSavedSearch: !!state.savedSearch,
-          messagesLength: state.messages.length,
-          savedSearchMessagesLength: state.savedSearch?.messages.length || 0,
-          currentSessionId: state.sessionId,
-          savedSearchSessionId: state.savedSearch?.sessionId || 'none',
-          currentShowSavedSearchPrompt: state.showSavedSearchPrompt,
-        });
-
         // Only show prompt if:
         // 1. There is a savedSearch
         // 2. Current chat is empty (no messages)
@@ -514,7 +478,6 @@ export const useChatStore = create<ChatStore>()(
           // Don't show if savedSearch is from the CURRENT session
           // This prevents showing prompt when we're already in the saved session
           if (state.savedSearch.sessionId === state.sessionId) {
-            console.log("ℹ️ savedSearch is from current session - not showing prompt");
             set({ showSavedSearchPrompt: false }); // Explicitly set to false
             return;
           }
@@ -523,7 +486,6 @@ export const useChatStore = create<ChatStore>()(
 
           // Don't show prompt if savedSearch was just created (< 10 seconds ago)
           if (timeSinceSaved < 10000) {
-            console.log("⏱️ savedSearch too recent (< 10s) - not showing prompt");
             return;
           }
 
@@ -531,7 +493,6 @@ export const useChatStore = create<ChatStore>()(
           // User probably doesn't care about old searches anymore
           const MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
           if (timeSinceSaved > MAX_AGE) {
-            console.log("🗑️ Clearing old savedSearch (> 24 hours old)");
             set({ savedSearch: null, showSavedSearchPrompt: false });
             return;
           }
@@ -542,16 +503,11 @@ export const useChatStore = create<ChatStore>()(
 
           // Show prompt only if savedSearch has NO products
           if (!hasProducts) {
-            console.log("✅ Showing savedSearch prompt (no products, different session)");
             set({ showSavedSearchPrompt: true });
-          } else {
-            console.log("ℹ️ savedSearch has products - not showing prompt");
           }
         } else {
-          console.log("ℹ️ Not showing prompt - conditions not met");
           // Ensure prompt is cleared if conditions not met
           if (state.showSavedSearchPrompt) {
-            console.log("🧹 Clearing stale showSavedSearchPrompt");
             set({ showSavedSearchPrompt: false });
           }
         }
@@ -620,23 +576,9 @@ export const useChatStore = create<ChatStore>()(
         // Exclude _wsSender from persistence
       }),
       onRehydrateStorage: () => {
-        console.log("💾 Starting to rehydrate chat store from localStorage...");
         return (state, error) => {
           if (error) {
             console.error("❌ Error rehydrating chat store:", error);
-          } else {
-            console.log("✅ Chat store rehydrated:", {
-              messageCount: state?.messages?.length || 0,
-              sessionId: state?.sessionId || "none",
-              hasMessages: !!state?.messages && state.messages.length > 0,
-            });
-            if (state?.messages && state.messages.length > 0) {
-              console.log("📝 Rehydrated messages:", state.messages.map(m => ({
-                id: m.id,
-                role: m.role,
-                content: m.content.substring(0, 30),
-              })));
-            }
           }
         };
       },

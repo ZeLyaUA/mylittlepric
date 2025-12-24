@@ -31,7 +31,6 @@ export function getBrowserId(): string {
   if (!browserId) {
     browserId = generateBrowserId();
     localStorage.setItem(BROWSER_ID_KEY, browserId);
-    console.log("📱 Generated new browser ID:", browserId);
   }
 
   return browserId;
@@ -44,5 +43,4 @@ export function getBrowserId(): string {
 export function clearBrowserId(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(BROWSER_ID_KEY);
-  console.log("🗑️ Cleared browser ID");
 }

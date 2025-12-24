@@ -29,7 +29,6 @@ function getWebSocketUrl(token?: string | null): string {
     baseUrl += `?token=${encodeURIComponent(token)}`;
   }
 
-  console.log("🔌 WebSocket URL:", baseUrl, "(Page protocol:", window.location.protocol + ")");
   return baseUrl;
 }
 
@@ -100,19 +99,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const initializingRef = useRef(false); // Prevent duplicate initialization calls
   const signingSessionRef = useRef(false); // Prevent duplicate session signing calls
 
-  // Log component mount/unmount for debugging
-  // Static counter to track total instances
-  const instanceIdRef = useRef(`instance-${Math.random().toString(36).substring(7)}`);
-
-  useEffect(() => {
-    console.log(`🔵 useChat hook MOUNTED (${instanceIdRef.current})`);
-    console.log("📊 Stack trace:", new Error().stack?.split('\n').slice(2, 6).join('\n'));
-
-    return () => {
-      console.log(`🔴 useChat hook UNMOUNTED (${instanceIdRef.current})`);
-    };
-  }, []);
-
   const {
     messages,
     sessionId,
@@ -139,42 +125,31 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
   // Memoize WebSocket URL to prevent creating multiple connections on re-renders
   const socketUrl = useMemo(() => {
-    const url = getWebSocketUrl(accessToken);
-    console.log(`🔗 WebSocket URL updated (${instanceIdRef.current}):`, {
-      hasToken: !!accessToken,
-      url: url.substring(0, 50) + '...',
-      stackTrace: new Error().stack?.split('\n').slice(2, 5).join('\n')
-    });
-    return url;
+    return getWebSocketUrl(accessToken);
   }, [accessToken]);
 
   const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket(
     socketUrl,
     {
       shouldReconnect: (closeEvent) => {
-        console.log("🔄 WebSocket reconnection check:", {
-          code: closeEvent?.code,
-          reason: closeEvent?.reason,
-          hasRefreshToken: !!refreshToken,
-          isExpired: isTokenExpired(),
-        });
-
-        // Don't reconnect if user logged out (no refresh token available)
-        if (!refreshToken) {
-          console.log("🔌 Not reconnecting - user logged out (no refresh token)");
-          return false;
+        // For authenticated users - check if token is expired
+        if (accessToken && refreshToken) {
+          // If token is expired, refresh before reconnecting
+          if (isTokenExpired()) {
+            import('@/shared/lib/auth-api').then(({ authAPI }) => {
+              authAPI.refreshAccessToken().catch((error) => {
+                console.error("❌ Failed to refresh token on reconnect:", error);
+                useAuthStore.getState().clearAuth();
+              });
+            });
+            // Don't reconnect immediately, wait for token refresh to trigger new connection
+            return false;
+          }
         }
 
-        // If token is expired and we have a refresh token, refresh before reconnecting
-        if (isTokenExpired() && refreshToken) {
-          console.log("🔐 Token expired, refreshing before reconnect...");
-          import('@/shared/lib/auth-api').then(({ authAPI }) => {
-            authAPI.refreshAccessToken().catch((error) => {
-              console.error("❌ Failed to refresh token on reconnect:", error);
-              useAuthStore.getState().clearAuth();
-            });
-          });
-          // Don't reconnect immediately, wait for token refresh to trigger new connection
+        // Always allow reconnection for both anonymous and authenticated users
+        // Only block if it's a deliberate close (code 1000 - normal closure)
+        if (closeEvent?.code === 1000) {
           return false;
         }
 
@@ -183,12 +158,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       reconnectAttempts,
       reconnectInterval,
       onOpen: async () => {
-        console.log("✅ WebSocket connected");
-
         // Recover missed messages after reconnect
         const lastTimestamp = reconnectManager.getLastMessageTimestamp();
         if (sessionId && lastTimestamp) {
-          console.log("🔄 Recovering missed messages since:", lastTimestamp.toISOString());
           setLoading(true);
 
           try {
@@ -196,11 +168,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
             // Add missed messages to store
             // IMPORTANT: Use msg.id from backend for deduplication
-            let addedCount = 0;
-            let skippedCount = 0;
-
             missedMessages.forEach((msg) => {
-              const currentCount = useChatStore.getState().messages.length;
               addMessage({
                 id: msg.id, // Use backend UUID for deduplication across reconnects
                 role: msg.role as "user" | "assistant",
@@ -211,19 +179,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
                 search_type: msg.search_type,
                 isLocal: false, // Recovered messages are not local
               });
-              const newCount = useChatStore.getState().messages.length;
-
-              if (newCount > currentCount) {
-                addedCount++;
-              } else {
-                skippedCount++;
-                console.log("⚠️ Message was skipped (duplicate):", msg.id);
-              }
             });
-
-            if (missedMessages.length > 0) {
-              console.log(`✅ Synced ${addedCount} new messages, skipped ${skippedCount} duplicates`);
-            }
           } catch (error) {
             console.error("Failed to sync missed messages:", error);
           } finally {
@@ -244,19 +200,12 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         };
 
         // Only log as error if it's not just a normal disconnect
-        if (errorInfo.isClosing) {
-          console.log("ℹ️ WebSocket closing (expected during navigation/reload):", errorInfo);
-        } else {
+        if (!errorInfo.isClosing) {
           console.error("❌ WebSocket error:", errorInfo);
-
-          // Check if this might be an authentication error
-          if (accessToken && isTokenExpired()) {
-            console.warn("⚠️ WebSocket error may be due to expired token");
-          }
         }
       },
-      onClose: (event) => {
-        console.log("🔌 WebSocket closed:", event.code, event.reason);
+      onClose: () => {
+        // Connection closed
       },
     }
   );
@@ -270,6 +219,21 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   }[readyState];
 
   const isConnected = readyState === ReadyState.OPEN;
+
+  // Send ping every 30 seconds to keep connection alive
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const pingInterval = setInterval(() => {
+      if (readyState === ReadyState.OPEN) {
+        sendJsonMessage({ type: 'ping' });
+      }
+    }, 30000); // 30 seconds
+
+    return () => {
+      clearInterval(pingInterval);
+    };
+  }, [isConnected, readyState, sendJsonMessage]);
 
   // Register WebSocket sender in store for realtime sync
   useEffect(() => {
@@ -299,11 +263,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       const twoMinutes = 2 * 60 * 1000;
 
       if (timeUntilExpiry < twoMinutes && timeUntilExpiry > 0) {
-        console.log("🔐 Token expiring soon, refreshing proactively...");
         try {
           const { authAPI } = await import('@/shared/lib/auth-api');
           await authAPI.refreshAccessToken();
-          console.log("✅ Token refreshed successfully");
         } catch (error) {
           console.error("❌ Failed to refresh token proactively:", error);
           // Don't clear auth here, let it fail naturally on next request
@@ -330,23 +292,14 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     const initializeSession = async () => {
       // Prevent duplicate initialization calls
       if (initializingRef.current) {
-        console.log("⏭️ Already initializing, skipping duplicate call");
         return;
       }
 
       const store = useChatStore.getState();
-      console.log("🔧 Initializing session:", {
-        hasInitialized: store._hasInitialized,
-        initialSessionId,
-        currentSessionId: store.sessionId,
-        messageCount: store.messages.length,
-        isAuthenticated: !!accessToken,
-      });
 
       // Skip if already initialized AND not authenticated
       // For authenticated users, we ALWAYS want to reload from server
       if (store._hasInitialized && !initialSessionId && !accessToken) {
-        console.log("⏭️ Session already initialized, skipping");
         return;
       }
 
@@ -356,7 +309,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       // If session_id is provided in URL, use it and load messages
       if (initialSessionId && !sessionLoadedRef.current) {
         sessionLoadedRef.current = true;
-        console.log("🔗 Loading session from URL:", initialSessionId);
         setSessionId(initialSessionId);
         localStorage.setItem("chat_session_id", initialSessionId);
 
@@ -384,10 +336,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
             if (localSessionId && localSessionId !== serverSessionId) {
               // ALWAYS keep session if it came from URL (user explicitly wants to view this session)
               if (initialSessionId) {
-                console.log("⏭️ Keeping URL session:", {
-                  localSessionId,
-                  serverSessionAvailable: serverSessionId,
-                });
                 return;
               }
 
@@ -398,30 +346,14 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
                 if (serverIsNewer) {
                   // Server session is newer (user started new chat, then reloaded page)
-                  // Switch to the newer session
-                  console.log("🔄 Switching to newer server session:", {
-                    oldSession: localSessionId,
-                    oldTimestamp: getSessionTimestamp(localSessionId),
-                    newSession: serverSessionId,
-                    newTimestamp: getSessionTimestamp(serverSessionId),
-                    reason: "Server session is newer",
-                  });
-                  // Will switch to server session below
+                  // Switch to the newer session - will switch below
                 } else {
                   // Local session is newer or equal - keep it
-                  console.log("⏭️ Keeping current session (local is newer or equal):", {
-                    localSessionId,
-                    localTimestamp: getSessionTimestamp(localSessionId),
-                    messageCount: store.messages.length,
-                    serverSessionId,
-                    serverTimestamp: getSessionTimestamp(serverSessionId),
-                  });
                   return;
                 }
               }
 
               // No messages in current session, safe to switch to server session
-              console.log("📱 Multi-device sync: Using server session", serverSessionId);
               setSessionId(serverSessionId);
               localStorage.setItem("chat_session_id", serverSessionId);
 
@@ -433,7 +365,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
               return;
             } else if (!localSessionId) {
               // No local session, use server session
-              console.log("☁️ Restoring session from server:", serverSessionId);
               setSessionId(serverSessionId);
               localStorage.setItem("chat_session_id", serverSessionId);
 
@@ -447,7 +378,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           } else if (store.sessionId) {
             // No active session on server, but we have local session
             // Link it to user account
-            console.log("🔗 Linking local session to user account");
             try {
               await SessionAPI.linkSessionToUser(store.sessionId);
             } catch (error) {
@@ -469,7 +399,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         const newSessionId = generateId();
         setSessionId(newSessionId);
         localStorage.setItem("chat_session_id", newSessionId);
-        console.log("🆕 Created new session:", newSessionId);
         return;
       }
 
@@ -482,25 +411,17 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       // IMPORTANT: For authenticated users, ALWAYS reload from server to ensure sync
       // localStorage is only used for optimistic initial render
       if (accessToken) {
-        console.log("🔄 Loading session from server (authenticated):", currentSessionId);
         try {
           await loadSessionMessages(currentSessionId);
         } catch (error) {
-          console.log("ℹ️ Failed to load from server, using local cache:", error);
+          // Failed to load from server, using local cache
         }
       } else {
         // For anonymous users, show local cache but attempt to load from server
-        if (store.messages.length > 0) {
-          console.log("📦 Using cached messages while loading from server:", {
-            sessionId: currentSessionId,
-            messageCount: store.messages.length,
-          });
-        }
-
         try {
           await loadSessionMessages(currentSessionId);
         } catch (error) {
-          console.log("ℹ️ Failed to load from server:", error);
+          // Failed to load from server
         }
       }
     };
@@ -524,7 +445,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           const savedSearch = store.savedSearch;
           // Only keep prompt if savedSearch is from a different session
           if (!savedSearch || savedSearch.sessionId === store.sessionId) {
-            console.log("🧹 Clearing savedSearch prompt for empty current session");
             store.setShowSavedSearchPrompt(false);
           }
         }
@@ -553,7 +473,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       // Prevent duplicate signing calls
       if (signingSessionRef.current) {
-        console.log("⏭️ Already signing session, skipping duplicate call");
         return;
       }
 
@@ -564,20 +483,13 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         const signedBaseId = getBaseSessionId(store.signedSessionId);
         const currentBaseId = getBaseSessionId(sessionId);
         if (signedBaseId === currentBaseId) {
-          console.log("🔐 Already have valid signed session for", currentBaseId);
           return; // Already signed for this session
         }
-        // Old signed session for different session - will be replaced
-        console.log("🔄 Signed session is for old session, re-signing:", {
-          old: signedBaseId,
-          new: currentBaseId,
-        });
       }
 
       signingSessionRef.current = true;
       try {
         const signedResponse = await SessionAPI.signSession(sessionId);
-        console.log("🔐 Session signed:", signedResponse.signed_session_id);
         store.setSignedSessionId(signedResponse.signed_session_id);
       } catch (error) {
         console.error("Failed to sign session:", error);
@@ -595,20 +507,12 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     if (lastJsonMessage !== null) {
       const data: any = lastJsonMessage;
 
-      console.log("📨 WebSocket message received:", {
-        type: data.type,
-        message_id: data.message_id,
-        content: data.output?.substring(0, 50),
-        session_id: data.session_id,
-      });
-
       if (data.type === "pong") {
         return;
       }
 
       // Ignore sync acknowledgment messages - they don't need to be displayed
       if (data.type === "sync_ack") {
-        console.log("✅ Sync acknowledged by server");
         return;
       }
 
@@ -616,7 +520,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       const messageId = data.message_id || JSON.stringify(data);
 
       if (processedMessageIds.current.has(messageId)) {
-        console.log("🔄 Skipping duplicate message:", data.type, messageId);
         return;
       }
 
@@ -633,18 +536,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       // Handle realtime sync messages
       if (data.type === "user_message_sync") {
         // User message from another device
-        console.log("📱 Received user message sync from another device", {
-          message_id: data.message_id,
-          content: data.output?.substring(0, 50),
-          session: data.session_id
-        });
-
         // Ignore if session doesn't match (compare base IDs)
         if (data.session_id && sessionId) {
           const incomingBaseId = getBaseSessionId(data.session_id);
           const currentBaseId = getBaseSessionId(sessionId);
           if (incomingBaseId !== currentBaseId) {
-            console.warn("⚠️ Ignoring sync from different session");
             return;
           }
         }
@@ -664,19 +560,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       if (data.type === "assistant_message_sync") {
         // Assistant message from another device
-        console.log("📱 Received assistant message sync from another device", {
-          message_id: data.message_id,
-          content: data.output?.substring(0, 50),
-          has_products: !!data.products,
-          session: data.session_id
-        });
-
         // Ignore if session doesn't match (compare base IDs)
         if (data.session_id && sessionId) {
           const incomingBaseId = getBaseSessionId(data.session_id);
           const currentBaseId = getBaseSessionId(sessionId);
           if (incomingBaseId !== currentBaseId) {
-            console.warn("⚠️ Ignoring sync from different session");
             return;
           }
         }
@@ -710,14 +598,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       // Support old message_sync type for backwards compatibility
       if (data.type === "message_sync") {
         // Message from another device (legacy format - assistant only)
-        console.log("📱 Received message sync from another device (legacy)");
-
         // Ignore if session doesn't match (compare base IDs)
         if (data.session_id && sessionId) {
           const incomingBaseId = getBaseSessionId(data.session_id);
           const currentBaseId = getBaseSessionId(sessionId);
           if (incomingBaseId !== currentBaseId) {
-            console.warn("⚠️ Ignoring sync from different session");
             return;
           }
         }
@@ -749,7 +634,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       if (data.type === "preferences_updated") {
         // Preferences changed on another device
-        console.log("📱 Preferences updated on another device");
         const store = useChatStore.getState();
         store.syncPreferencesFromServer();
         return;
@@ -757,7 +641,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       if (data.type === "saved_search_updated") {
         // Saved search changed on another device
-        console.log("📱 Saved search updated on another device");
         const store = useChatStore.getState();
         store.syncPreferencesFromServer();
         return;
@@ -765,7 +648,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       if (data.type === "session_changed") {
         // Session changed on another device (e.g., New Search)
-        console.log("📱 Session changed on another device");
         if (data.session_id && sessionId) {
           const incomingBaseId = getBaseSessionId(data.session_id);
           const currentBaseId = getBaseSessionId(sessionId);
@@ -775,9 +657,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
             localStorage.setItem("chat_session_id", data.session_id);
 
             // Load messages for new session (may be empty if it's a brand new session)
-            loadSessionMessages(data.session_id).catch((err) => {
+            loadSessionMessages(data.session_id).catch(() => {
               // Ignore errors for new sessions - they're expected to be empty initially
-              console.log("ℹ️ New session is empty, continuing:", err.message);
             });
           }
         }
@@ -789,8 +670,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
         // Check if it's a rate limit error
         if (data.error === "rate_limit_exceeded" || errorMessage.toLowerCase().includes("rate limit exceeded")) {
-          console.warn("⚠️ Rate limit exceeded:", data);
-
           // Parse retry_after from message if available
           const retryMatch = errorMessage.match(/retry after (\d+) seconds?/i);
           const retryAfter = retryMatch ? parseInt(retryMatch[1], 10) : 30;
@@ -857,17 +736,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         const currentBaseId = getBaseSessionId(sessionId);
 
         if (incomingBaseId !== currentBaseId) {
-          console.warn(
-            "⚠️ Ignoring message from old session:",
-            data.session_id,
-            "(base:",
-            incomingBaseId,
-            ") - Current session:",
-            sessionId,
-            "(base:",
-            currentBaseId,
-            ")"
-          );
           return;
         }
       }
@@ -911,34 +779,20 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
   // Send initial query if provided
   useEffect(() => {
-    console.log("📍 Initial query effect triggered:", {
-      initialQuery,
-      alreadySent: initialQuerySentRef.current,
-      sessionId,
-      isConnected,
-    });
-
     if (
       initialQuery &&
       !initialQuerySentRef.current &&
       sessionId &&
       isConnected
     ) {
-      console.log("📤 Sending initial query:", initialQuery);
       initialQuerySentRef.current = true;
       sendMessage(initialQuery);
     }
   }, [initialQuery, sessionId, isConnected]);
 
   const sendMessage = async (message: string) => {
-    console.log("🔵 sendMessage called:", {
-      message: message.substring(0, 50),
-      stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n')
-    });
-
     const textToSend = message.trim();
     if (!textToSend || !isConnected) {
-      console.warn("⚠️ Cannot send message:", { textToSend, isConnected });
       return;
     }
 
@@ -952,12 +806,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       status: "pending" as const, // Mark as pending
     };
 
-    console.log("📤 Sending user message:", {
-      messageId,
-      content: textToSend.substring(0, 50),
-      sessionId,
-    });
-
     addMessage(userMessage);
     setLoading(true);
 
@@ -965,13 +813,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       const store = useChatStore.getState();
       // Prefer signed session ID if available
       const sessionIdToSend = store.signedSessionId || sessionId;
-
-      console.log("📡 Sending WebSocket message:", {
-        type: "chat",
-        session_id: sessionIdToSend,
-        message: textToSend.substring(0, 50),
-        messageId,
-      });
 
       sendJsonMessage({
         type: "chat",

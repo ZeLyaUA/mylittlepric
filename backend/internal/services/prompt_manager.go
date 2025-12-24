@@ -21,11 +21,14 @@ func NewPromptManager() *PromptManager {
 }
 
 func (pm *PromptManager) loadPrompts() {
+	// Get base path for prompts
+	basePath := getPromptBasePath()
+
 	promptFiles := map[string]string{
-		"master":        "internal/services/prompts/master_prompt.txt",
-		"electronics":   "internal/services/prompts/specialized_electronics.txt",
-		"parametric":    "internal/services/prompts/specialized_parametric.txt",
-		"generic_model": "internal/services/prompts/specialized_generic_model.txt",
+		"master":        basePath + "internal/services/prompts/master_prompt.txt",
+		"electronics":   basePath + "internal/services/prompts/specialized_electronics.txt",
+		"parametric":    basePath + "internal/services/prompts/specialized_parametric.txt",
+		"generic_model": basePath + "internal/services/prompts/specialized_generic_model.txt",
 	}
 
 	pm.mu.Lock()
@@ -34,7 +37,7 @@ func (pm *PromptManager) loadPrompts() {
 	for key, path := range promptFiles {
 		content, err := os.ReadFile(path)
 		if err != nil {
-			fmt.Printf("⚠️  Failed to load prompt %s: %v\n", key, err)
+			fmt.Printf("⚠️  Failed to load prompt %s from %s: %v\n", key, path, err)
 			continue
 		}
 		pm.prompts[key] = string(content)
