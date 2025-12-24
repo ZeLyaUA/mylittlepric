@@ -73,18 +73,19 @@ type WSMessage struct {
 }
 
 type WSResponse struct {
-	Type           string                         `json:"type"`
-	MessageID      string                         `json:"message_id,omitempty"` // Unique message ID for deduplication
-	Output         string                         `json:"output,omitempty"`
-	QuickReplies   []string                       `json:"quick_replies,omitempty"`
-	Products       []models.ProductCard           `json:"products,omitempty"`
-	SearchType     string                         `json:"search_type,omitempty"`
-	SessionID      string                         `json:"session_id"`
-	MessageCount   int                            `json:"message_count,omitempty"`
-	SearchState    *models.SearchStateResponse    `json:"search_state,omitempty"`
-	ProductDetails *models.ProductDetailsResponse `json:"product_details,omitempty"`
-	Error          string                         `json:"error,omitempty"`
-	Message        string                         `json:"message,omitempty"`
+	Type               string                         `json:"type"`
+	MessageID          string                         `json:"message_id,omitempty"` // Unique message ID for deduplication
+	Output             string                         `json:"output,omitempty"`
+	QuickReplies       []string                       `json:"quick_replies,omitempty"`
+	Products           []models.ProductCard           `json:"products,omitempty"`
+	ProductDescription string                         `json:"product_description,omitempty"` // AI-generated description about products
+	SearchType         string                         `json:"search_type,omitempty"`
+	SessionID          string                         `json:"session_id"`
+	MessageCount       int                            `json:"message_count,omitempty"`
+	SearchState        *models.SearchStateResponse    `json:"search_state,omitempty"`
+	ProductDetails     *models.ProductDetailsResponse `json:"product_details,omitempty"`
+	Error              string                         `json:"error,omitempty"`
+	Message            string                         `json:"message,omitempty"`
 }
 
 func (h *WSHandler) HandleWebSocket(c *websocket.Conn) {
@@ -258,15 +259,16 @@ func (h *WSHandler) handleChat(c *websocket.Conn, msg *WSMessage, clientID strin
 
 	// Build response
 	response := &WSResponse{
-		Type:         result.Type,
-		MessageID:    messageID, // Same ID as in database
-		Output:       result.Output,
-		QuickReplies: result.QuickReplies,
-		Products:     result.Products,
-		SearchType:   result.SearchType,
-		SessionID:    result.SessionID,
-		MessageCount: result.MessageCount,
-		SearchState:  result.SearchState,
+		Type:               result.Type,
+		MessageID:          messageID, // Same ID as in database
+		Output:             result.Output,
+		QuickReplies:       result.QuickReplies,
+		Products:           result.Products,
+		ProductDescription: result.ProductDescription,
+		SearchType:         result.SearchType,
+		SessionID:          result.SessionID,
+		MessageCount:       result.MessageCount,
+		SearchState:        result.SearchState,
 	}
 
 	// Send response to the sender
@@ -276,15 +278,16 @@ func (h *WSHandler) handleChat(c *websocket.Conn, msg *WSMessage, clientID strin
 	if userID != nil {
 		// Create sync message for other devices (same message_id for deduplication)
 		syncMsg := &WSResponse{
-			Type:         "assistant_message_sync",
-			MessageID:    messageID, // Same ID as sent to sender and in database
-			Output:       result.Output,
-			QuickReplies: result.QuickReplies,
-			Products:     result.Products,
-			SearchType:   result.SearchType,
-			SessionID:    result.SessionID,
-			MessageCount: result.MessageCount,
-			SearchState:  result.SearchState,
+			Type:               "assistant_message_sync",
+			MessageID:          messageID, // Same ID as sent to sender and in database
+			Output:             result.Output,
+			QuickReplies:       result.QuickReplies,
+			Products:           result.Products,
+			ProductDescription: result.ProductDescription,
+			SearchType:         result.SearchType,
+			SessionID:          result.SessionID,
+			MessageCount:       result.MessageCount,
+			SearchState:        result.SearchState,
 		}
 		h.broadcastToUser(*userID, syncMsg, clientID)
 	}

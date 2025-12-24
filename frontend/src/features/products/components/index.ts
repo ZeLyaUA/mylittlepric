@@ -1,5 +1,6 @@
 // Product components
 export { ProductCard } from "./ProductCard";
+export { ProductTable } from "./ProductTable";
 export { ProductDrawer } from "./ProductDrawer";
 export { ProductImageGallery } from "./product-image-gallery";
 export { ProductInfo } from "./product-info";

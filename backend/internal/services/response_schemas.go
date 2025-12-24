@@ -76,12 +76,12 @@ func GetSearchResponseSchema() *genai.Schema {
 			},
 			"min_price": {
 				Type:        genai.TypeNumber,
-				Description: "Minimum price in user's currency (extracted from price range like '30000-40000')",
+				Description: "DEPRECATED: Not used in search. Keep this field empty/null. Price ranges are for visual guidance only.",
 				Nullable:    boolPtr(true),
 			},
 			"max_price": {
 				Type:        genai.TypeNumber,
-				Description: "Maximum price in user's currency (extracted from price range like '30000-40000')",
+				Description: "DEPRECATED: Not used in search. Keep this field empty/null. Price ranges are for visual guidance only.",
 				Nullable:    boolPtr(true),
 			},
 		},
@@ -138,9 +138,14 @@ func GetAPIRequestResponseSchema() *genai.Schema {
 				Description: "Optional message to accompany the results",
 				Nullable:    boolPtr(true),
 			},
+			"product_description": {
+				Type:        genai.TypeString,
+				Description: "Brief description about the product category or search results (1-2 sentences, max 200 chars)",
+				Nullable:    boolPtr(true),
+			},
 		},
 		Required:         []string{"response_type", "api", "params", "category"},
-		PropertyOrdering: []string{"response_type", "api", "params", "category", "output"},
+		PropertyOrdering: []string{"response_type", "api", "params", "category", "output", "product_description"},
 	}
 }
 
@@ -221,6 +226,11 @@ func GetUniversalResponseSchema() *genai.Schema {
 				Required:         []string{"q"},
 				PropertyOrdering: []string{"q", "gl", "hl", "currency"},
 			},
+			"product_description": {
+				Type:        genai.TypeString,
+				Nullable:    boolPtr(true),
+				Description: "Brief description about the product category or search results (for api_request)",
+			},
 		},
 		Required: []string{"response_type", "category"},
 		PropertyOrdering: []string{
@@ -235,6 +245,7 @@ func GetUniversalResponseSchema() *genai.Schema {
 			"max_price",
 			"api",
 			"params",
+			"product_description",
 		},
 	}
 }

@@ -70,7 +70,7 @@ Extract and return ONLY a JSON object with these fields (omit fields if not ment
 Rules:
 - Only include information explicitly mentioned by user
 - Merge with current preferences (don't overwrite unless user changed preference)
-- Extract price range in %s currency
+- Extract price range in %s currency AS-IS (prices are already reduced by 30%% in conversation)
 - Keep features and requirements concise
 - Return ONLY valid JSON, no explanations`, conversationText, currentPrefJSON, currency, currency)
 

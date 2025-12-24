@@ -27,6 +27,7 @@ export interface ChatMessage {
   timestamp: number;
   quick_replies?: string[];
   products?: Product[];
+  product_description?: string; // AI description about the products
   search_type?: string;
   isLocal?: boolean; // true if message was sent from this device, false if synced from another device
 
@@ -42,6 +43,7 @@ export interface SessionMessage {
   timestamp?: string;
   quick_replies?: string[];
   products?: Product[];
+  product_description?: string; // AI description about the products
   search_type?: string;
 }
 
@@ -68,6 +70,7 @@ export interface ChatResponse {
   message: string;
   quick_replies?: string[];
   products?: Product[];
+  product_description?: string; // AI description about the products
   response_type?: string;
   search_type?: string;
 }

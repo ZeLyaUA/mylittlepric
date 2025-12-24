@@ -44,15 +44,16 @@ type ChatRequest struct {
 
 // ChatProcessorResponse represents the standardized response from chat processing
 type ChatProcessorResponse struct {
-	Type         string
-	Output       string
-	QuickReplies []string
-	Products     []models.ProductCard
-	SearchType   string
-	SessionID    string
-	MessageCount int
-	SearchState  *models.SearchStateResponse
-	Error        *ErrorInfo
+	Type               string
+	Output             string
+	QuickReplies       []string
+	Products           []models.ProductCard
+	ProductDescription string // AI-generated description about the products
+	SearchType         string
+	SessionID          string
+	MessageCount       int
+	SearchState        *models.SearchStateResponse
+	Error              *ErrorInfo
 }
 
 // ErrorInfo contains error details
@@ -373,6 +374,7 @@ func (p *ChatProcessor) ProcessChat(req *ChatRequest) *ChatProcessorResponse {
 				response.Type = "text"
 			} else if len(products) > 0 {
 				response.Products = products
+				response.ProductDescription = geminiResponse.ProductDescription // AI-generated description about products
 				response.SearchType = geminiResponse.SearchType
 
 				// Update last product
@@ -445,6 +447,7 @@ func (p *ChatProcessor) ProcessChat(req *ChatRequest) *ChatProcessorResponse {
 					response.Type = "text"
 				} else if len(products) > 0 {
 					response.Products = products
+					response.ProductDescription = geminiResponse.ProductDescription // AI-generated description about products
 					response.SearchType = "exact"
 					response.Output = geminiResponse.Output // Use AI's message if provided
 
@@ -718,12 +721,14 @@ func (p *ChatProcessor) performSearch(geminiResp *models.GeminiResponse, country
 
 	utils.LogInfo(ctx, "sending to SERP", slog.String("query", translatedQuery))
 
+	// NOTE: Price range is for visual display only, not used in actual search
+	// This allows broader search results while showing price guidance to users
 	products, _, err := p.container.SerpService.SearchWithCache(
 		translatedQuery,
 		geminiResp.SearchType,
 		country,
-		geminiResp.MinPrice,
-		geminiResp.MaxPrice,
+		nil, // minPrice - not used for search
+		nil, // maxPrice - not used for search
 		p.container.CacheService,
 	)
 

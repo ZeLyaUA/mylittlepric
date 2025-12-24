@@ -16,14 +16,15 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	Type         string               `json:"type"`
-	Output       string               `json:"output,omitempty"`
-	QuickReplies []string             `json:"quick_replies,omitempty"`
-	Products     []ProductCard        `json:"products,omitempty"`
-	SearchType   string               `json:"search_type,omitempty"`
-	SessionID    string               `json:"session_id"`
-	MessageCount int                  `json:"message_count"`
-	SearchState  *SearchStateResponse `json:"search_state,omitempty"`
+	Type               string               `json:"type"`
+	Output             string               `json:"output,omitempty"`
+	QuickReplies       []string             `json:"quick_replies,omitempty"`
+	Products           []ProductCard        `json:"products,omitempty"`
+	ProductDescription string               `json:"product_description,omitempty"` // AI-generated description about the products
+	SearchType         string               `json:"search_type,omitempty"`
+	SessionID          string               `json:"session_id"`
+	MessageCount       int                  `json:"message_count"`
+	SearchState        *SearchStateResponse `json:"search_state,omitempty"`
 }
 
 type SearchStateResponse struct {
@@ -43,19 +44,20 @@ type SearchStateResponse struct {
 // ═══════════════════════════════════════════════════════════
 
 type GeminiResponse struct {
-	ResponseType  string   `json:"response_type"` // "dialogue", "search", or "api_request"
-	Output        string   `json:"output"`
-	QuickReplies  []string `json:"quick_replies"`
-	SearchPhrase  string   `json:"search_phrase"` // For response_type="search"
-	SearchType    string   `json:"search_type"`   // "exact", "parameters", or "category"
-	Category      string   `json:"category"`
-	PriceFilter   string   `json:"price_filter,omitempty"` // "cheaper" or "expensive"
-	MinPrice      *float64 `json:"min_price,omitempty"`    // Minimum price in user's currency
-	MaxPrice      *float64 `json:"max_price,omitempty"`    // Maximum price in user's currency
-	ProductType   string   `json:"product_type"`
-	Brand         string   `json:"brand"`
-	Confidence    float32  `json:"confidence"`
-	RequiresInput bool     `json:"requires_input"`
+	ResponseType       string   `json:"response_type"` // "dialogue", "search", or "api_request"
+	Output             string   `json:"output"`
+	QuickReplies       []string `json:"quick_replies"`
+	SearchPhrase       string   `json:"search_phrase"` // For response_type="search"
+	SearchType         string   `json:"search_type"`   // "exact", "parameters", or "category"
+	Category           string   `json:"category"`
+	PriceFilter        string   `json:"price_filter,omitempty"`        // "cheaper" or "expensive"
+	MinPrice           *float64 `json:"min_price,omitempty"`           // Minimum price in user's currency
+	MaxPrice           *float64 `json:"max_price,omitempty"`           // Maximum price in user's currency
+	ProductType        string   `json:"product_type"`
+	Brand              string   `json:"brand"`
+	Confidence         float32  `json:"confidence"`
+	RequiresInput      bool     `json:"requires_input"`
+	ProductDescription string   `json:"product_description,omitempty"` // AI-generated description about the products
 	// New fields for api_request response type
 	API    string                 `json:"api,omitempty"`    // API name (e.g., "google_shopping")
 	Params map[string]interface{} `json:"params,omitempty"` // API parameters

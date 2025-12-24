@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ChatMessage as ChatMessageType } from "@/shared/types";
 import { useAuthStore } from "@/shared/lib";
-import { ProductCard } from "@/features/products";
+import { ProductCard, ProductTable } from "@/features/products";
 
 
 
@@ -154,70 +154,7 @@ export function ChatMessage({ message, onQuickReply, onRetry }: ChatMessageProps
         )}
 
         {message.products && message.products.length > 0 && (
-          <div className="w-full">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-1 bg-primary rounded-full" />
-                <div>
-                  <h3 className="text-lg font-bold text-foreground">
-                    {message.products.length} {message.products.length === 1 ? 'Product' : 'Products'} Found
-                  </h3>
-                  <p className="text-xs text-muted-foreground">Swipe to explore more options</p>
-                </div>
-              </div>
-
-              {/* Navigation Arrows - Desktop only */}
-              {message.products.length > 3 && (
-                <div className="hidden md:flex items-center gap-2">
-                  <button
-                    onClick={() => scroll('left')}
-                    className="group p-2 rounded-full bg-secondary hover:bg-primary/10 border border-border hover:border-primary/30 cursor-pointer"
-                    aria-label="Scroll left"
-                  >
-                    <ChevronLeft className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
-                  </button>
-                  <button
-                    onClick={() => scroll('right')}
-                    className="group p-2 rounded-full bg-secondary hover:bg-primary/10 border border-border hover:border-primary/30 cursor-pointer"
-                    aria-label="Scroll right"
-                  >
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Products Slider */}
-            <div className="relative group/slider overflow-hidden">
-              {/* Slider Container */}
-              <div
-                ref={scrollContainerRef}
-                className="flex gap-3.5 overflow-x-auto overflow-y-visible pb-6 pt-2 px-2 snap-x snap-mandatory hide-scrollbar"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {message.products?.map((product, index) => (
-                  <div key={`product-${index}`} className="flex-none w-[210px] snap-start first:ml-1">
-                    <ProductCard product={product} index={index + 1} />
-                  </div>
-                ))}
-              </div>
-
-              {/* Scroll Indicator */}
-              <div className="flex justify-center gap-1.5 mt-3">
-                {Array.from({ length: Math.min(message.products?.length || 0, 10) }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="h-1 rounded-full bg-muted transition-all duration-300"
-                    style={{
-                      width: idx < Math.min(3, message.products?.length || 0) ? '24px' : '8px',
-                      opacity: idx < Math.min(3, message.products?.length || 0) ? 1 : 0.3
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+          <ProductTable products={message.products} description={message.product_description} />
         )}
       </div>
     </div>
