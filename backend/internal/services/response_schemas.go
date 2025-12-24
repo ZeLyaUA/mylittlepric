@@ -140,11 +140,10 @@ func GetAPIRequestResponseSchema() *genai.Schema {
 			},
 			"product_description": {
 				Type:        genai.TypeString,
-				Description: "Brief description about the product category or search results (1-2 sentences, max 200 chars)",
-				Nullable:    boolPtr(true),
+				Description: "REQUIRED: Brief description about the product category or search results (1-2 sentences, max 200 chars)",
 			},
 		},
-		Required:         []string{"response_type", "api", "params", "category"},
+		Required:         []string{"response_type", "api", "params", "category", "product_description"},
 		PropertyOrdering: []string{"response_type", "api", "params", "category", "output", "product_description"},
 	}
 }
