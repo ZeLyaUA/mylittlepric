@@ -60,14 +60,15 @@ export function ChatInput({
   return (
     <div className="w-full max-w-3xl mx-auto px-2 py-4 pb-2">
       <div className="flex flex-col px-4 py-2 rounded-xl border bg-secondary border-border focus-within:border-primary transition-colors">
-        <input
-          type="text"
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={getPlaceholder()}
           disabled={isDisabled}
-          className="flex-1 px-2 py-3 bg-transparent focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          rows={1}
+          className="flex-1 px-2 py-3 bg-transparent focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed resize-none text-base min-h-11 max-h-32 overflow-y-auto"
+          style={{ fieldSizing: 'content' } as React.CSSProperties}
         />
        <div className="flex justify-between items-center">
         

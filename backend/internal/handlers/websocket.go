@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"sync"
 	"time"
 
@@ -98,6 +100,16 @@ func (h *WSHandler) HandleWebSocket(c *websocket.Conn) {
 	cleanup := h.recordConnectionStart()
 	defer cleanup()
 
+	// Set initial read deadline (60 seconds - client should ping within 30s)
+	c.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+	// Set pong handler to reset read deadline
+	c.SetPongHandler(func(string) error {
+		// Reset read deadline when we receive pong
+		c.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return nil
+	})
+
 	// First message should contain access_token if user is authenticated
 	// We'll update userID as messages come in with access_token
 	client := &Client{
@@ -114,9 +126,14 @@ func (h *WSHandler) HandleWebSocket(c *websocket.Conn) {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("❌ WebSocket error: %v", err)
 				h.recordConnectionFailed()
+			} else if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				log.Printf("⏱️ WebSocket timeout (no ping received): %s", clientID)
 			}
 			break
 		}
+
+		// Reset read deadline on any message (not just pong)
+		c.SetReadDeadline(time.Now().Add(60 * time.Second))
 
 		// Record message received
 		h.recordMessageReceived(msg.Type)
@@ -321,7 +338,8 @@ func (h *WSHandler) handleProductDetails(c *websocket.Conn, msg *WSMessage) {
 	}
 
 	startTime := time.Now()
-	productDetails, keyIndex, err := h.container.SerpService.GetProductDetailsByToken(msg.PageToken)
+	ctx := context.Background()
+	productDetails, keyIndex, err := h.container.SerpService.GetProductDetailsByToken(ctx, msg.PageToken)
 	responseTime := time.Since(startTime)
 
 	h.container.SerpRotator.RecordUsage(keyIndex, err == nil, responseTime)
