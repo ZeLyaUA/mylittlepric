@@ -90,21 +90,14 @@ export function ProductTable({ products, description }: ProductTableProps) {
                         </div>
                       </td>
 
-                      {/* Product Name and Price */}
+                      {/* Product Name */}
                       <td className="py-3 px-4">
-                        <div className="space-y-1">
-                          <h3
-                            className="font-medium text-sm text-foreground line-clamp-2 leading-snug cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => product.page_token && setSelectedToken(product.page_token)}
-                          >
-                            {name}
-                          </h3>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-base font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                              {product.price}
-                            </span>
-                          </div>
-                        </div>
+                        <h3
+                          className="font-medium text-sm text-foreground line-clamp-2 leading-snug cursor-pointer hover:text-primary transition-colors"
+                          onClick={() => product.page_token && setSelectedToken(product.page_token)}
+                        >
+                          {name}
+                        </h3>
                       </td>
 
                       {/* See All Sellers Button */}
@@ -134,7 +127,7 @@ export function ProductTable({ products, description }: ProductTableProps) {
                   onClick={() => setShowAll(true)}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary/90 hover:from-primary hover:to-primary text-primary-foreground font-medium rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:scale-[1.02] group"
                 >
-                  <span>Просмотреть все предложения ({products.length})</span>
+                  <span>View All Products ({products.length})</span>
                   <svg className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -149,7 +142,7 @@ export function ProductTable({ products, description }: ProductTableProps) {
                 onClick={() => setShowAll(false)}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-lg transition-all duration-200 group"
               >
-                <span>Свернуть</span>
+                <span>Collapse</span>
                 <svg className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
@@ -188,15 +181,11 @@ export function ProductTable({ products, description }: ProductTableProps) {
 
                   {/* Product Info */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <h3 className="font-medium text-sm text-foreground line-clamp-2 leading-snug mb-1">
+                    <h3 className="font-medium text-sm text-foreground line-clamp-3 leading-snug">
                       {name}
                     </h3>
 
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-base font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                        {product.price}
-                      </span>
-
+                    <div className="flex items-center justify-end gap-2 mt-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -222,7 +211,7 @@ export function ProductTable({ products, description }: ProductTableProps) {
                 onClick={() => setShowAll(true)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-primary/90 text-primary-foreground font-medium rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 group"
               >
-                <span className="text-sm">Показать все ({products.length})</span>
+                <span className="text-sm">View All ({products.length})</span>
                 <svg className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -235,7 +224,7 @@ export function ProductTable({ products, description }: ProductTableProps) {
               onClick={() => setShowAll(false)}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-lg transition-all duration-200 group"
             >
-              <span className="text-sm">Свернуть</span>
+              <span className="text-sm">Collapse</span>
               <svg className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
               </svg>

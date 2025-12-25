@@ -11,7 +11,6 @@ import { ProductImageGallery } from "./product-image-gallery";
 import { ProductInfo } from "./product-info";
 import { ProductOffers } from "./product-offers";
 import { ProductRatingBreakdown } from "./product-rating-breakdown";
-import { ProductSimilarItems } from "./product-similar-items";
 import { ProductDrawerSkeleton } from "@/shared/components/ui";
 
 
@@ -63,8 +62,6 @@ export function ProductDrawer({ pageToken, onClose }: ProductDrawerProps) {
           <ProductOffers offers={product.offers || []} />
 
           <ProductRatingBreakdown ratings={product.rating_breakdown || []} />
-
-          <ProductSimilarItems products={product.more_options || []} />
         </div>
       ) : (
         <div className="flex items-center justify-center h-96 animate-fade-in">
