@@ -244,10 +244,16 @@ func (g *GeminiService) ProcessMessageWithContext(
 		return nil, 0, fmt.Errorf("empty response text from Gemini")
 	}
 
+	// DEBUG: Log raw JSON response from Gemini
+	fmt.Printf("🔍 RAW GEMINI JSON:\n%s\n", responseText)
+
 	var geminiResp models.GeminiResponse
 	if err := json.Unmarshal([]byte(responseText), &geminiResp); err != nil {
 		return nil, 0, fmt.Errorf("failed to parse Gemini JSON response: %w (response: %s)", err, responseText)
 	}
+
+	// DEBUG: Log parsed product_description
+	fmt.Printf("🔍 PARSED product_description: '%s'\n", geminiResp.ProductDescription)
 
 	if geminiResp.ResponseType == "" {
 		return nil, 0, fmt.Errorf("missing response_type in Gemini response")
