@@ -34,6 +34,7 @@ export interface SessionMessagesResponse {
     timestamp?: string;
     quick_replies?: string[];
     products?: any[];
+    product_description?: string; // AI-generated description about the products
     search_type?: string;
   }>;
   session_id: string;

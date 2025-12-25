@@ -309,6 +309,7 @@ Example:
 ```json
 {
   "response_type": "api_request",
+  "product_description": "Brief description about the product in {fe_language} (1-2 sentences, max 200 chars) - ⚠️ REQUIRED FIELD ⚠️",
   "api": "google_shopping",
   "params": {
     "q": "FINAL_PRODUCT_NAME_FULL_EXACT",
@@ -316,8 +317,7 @@ Example:
     "hl": "{fe_language}",
     "currency": "{fe_currency}"
   },
-  "category": "brand_specific|parametric|generic_model",
-  "product_description": "Brief description about the product (1-2 sentences, max 200 chars)"
+  "category": "brand_specific|parametric|generic_model"
 }
 ```
 
@@ -326,17 +326,19 @@ Example:
 - **parametric:** After collecting all specs (type, size, material, color, etc.)
 - **generic_model:** After user provides code/standard + brand + specs
 
-**product_description Field:**
-- **⚠️ MANDATORY FIELD - MUST ALWAYS BE PRESENT IN api_request RESPONSES ⚠️**
-- **NEVER leave empty or omit this field!**
+**⚠️ CRITICAL: product_description Field ⚠️**
+- **THIS IS THE MOST IMPORTANT FIELD IN api_request - IT MUST BE THE FIRST FIELD AFTER response_type!**
+- **NEVER EVER leave this field empty or with an empty string ""!**
+- **RESPONSE WILL BE REJECTED IF product_description IS EMPTY!**
 - Write a brief, helpful description about the product category or search query (1-2 sentences, max 200 chars)
 - Examples:
-  - For "iPhone 16 Pro Max": "Флагманский смартфон с передовой системой камер и мощной производительностью"
-  - For "wireless headphones": "Беспроводные наушники премиум-класса с активным шумоподавлением"
-  - For "running shoes": "Удобные кроссовки для ежедневных тренировок"
+  - For "iPhone 16 Pro Max" in Russian: "Флагманский смартфон с передовой системой камер и мощной производительностью"
+  - For "wireless headphones" in English: "Premium wireless headphones with active noise cancellation"
+  - For "running shoes" in German: "Bequeme Laufschuhe für das tägliche Training"
 - **ALWAYS use {fe_language}** for the description
 - Focus on key features or use cases that help users understand what they're looking for
-- **If you don't know what to write, use generic description based on product type**
+- **If you don't know exact features, write a simple generic description like: "Найдены предложения для [product name]"**
+- **NEVER use empty string! Better a simple description than no description!**
 
 > **OFF_TOPIC & ALTERNATIVES responses:** See REFERENCE SECTION D
 
@@ -625,6 +627,7 @@ Example:
 // User selects "Чорна" → API_REQUEST
 {
   "response_type": "api_request",
+  "product_description": "Стильная черная кожаная куртка для мужчин размера L",  // ⚠️ REQUIRED FIRST! NEVER EMPTY!
   "api": "google_shopping",
   "params": {
     "q": "men's leather jacket size L black",
@@ -632,8 +635,7 @@ Example:
     "hl": "{fe_language}",
     "currency": "{fe_currency}"
   },
-  "category": "parametric",
-  "product_description": "Стильная черная кожаная куртка для мужчин размера L"  // MANDATORY! Never leave empty!
+  "category": "parametric"
 }
 ```
 

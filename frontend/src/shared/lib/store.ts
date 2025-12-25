@@ -221,6 +221,7 @@ export const useChatStore = create<ChatStore>()(
               timestamp: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now(),
               quick_replies: msg.quick_replies,
               products: msg.products,
+              product_description: msg.product_description,
               search_type: msg.search_type,
               isLocal: true, // Messages loaded from session are considered local (already sent)
             }));
@@ -324,6 +325,7 @@ export const useChatStore = create<ChatStore>()(
                 timestamp: msg.timestamp,
                 quick_replies: msg.quick_replies,
                 products: msg.products,
+                product_description: msg.product_description,
                 search_type: msg.search_type,
               })),
             };

@@ -227,13 +227,13 @@ func GetUniversalResponseSchema() *genai.Schema {
 			},
 			"product_description": {
 				Type:        genai.TypeString,
-				Nullable:    boolPtr(true),
-				Description: "Brief description about the product category or search results (for api_request)",
+				Description: "REQUIRED: Brief description about the product category or search results (1-2 sentences, max 200 chars). MUST be provided for api_request responses.",
 			},
 		},
 		Required: []string{"response_type", "category"},
 		PropertyOrdering: []string{
 			"response_type",
+			"product_description",  // CRITICAL: Must be second to ensure Gemini always sees it
 			"output",
 			"category",
 			"quick_replies",
@@ -244,7 +244,6 @@ func GetUniversalResponseSchema() *genai.Schema {
 			"max_price",
 			"api",
 			"params",
-			"product_description",
 		},
 	}
 }
