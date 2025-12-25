@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ChatMessage as ChatMessageType } from "@/shared/types";
 import { useAuthStore } from "@/shared/lib";
@@ -56,14 +56,13 @@ export function ChatMessage({ message, onQuickReply, onRetry }: ChatMessageProps
   const isPending = message.status === "pending";
   const isFailed = message.status === "failed";
 
-  // Debug: Log product_description when products are present
-  if (message.products && message.products.length > 0) {
-    console.log('📦 Products message:', {
-      productCount: message.products.length,
-      hasDescription: !!message.product_description,
-      description: message.product_description
-    });
-  }
+  // Debug: Log full message when products are present (only once)
+  useEffect(() => {
+    if (message.products && message.products.length > 0) {
+      console.log('📦 Full message object:', message);
+      console.log('📦 Product description:', message.product_description);
+    }
+  }, [message.id]); // Only log when message ID changes
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {

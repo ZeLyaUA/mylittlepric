@@ -176,6 +176,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
                 timestamp: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now(),
                 quick_replies: msg.quick_replies,
                 products: msg.products,
+                product_description: msg.product_description,
                 search_type: msg.search_type,
                 isLocal: false, // Recovered messages are not local
               });
@@ -576,6 +577,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           timestamp: Date.now(),
           quick_replies: data.quick_replies,
           products: data.products,
+          product_description: data.product_description,
           search_type: data.search_type,
           isLocal: false, // Synced messages are not local
         };
@@ -614,6 +616,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           timestamp: Date.now(),
           quick_replies: data.quick_replies,
           products: data.products,
+          product_description: data.product_description,
           search_type: data.search_type,
           isLocal: false, // Legacy synced messages are not local
         };
@@ -747,6 +750,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         timestamp: Date.now(),
         quick_replies: data.quick_replies,
         products: data.products,
+        product_description: data.product_description,
         search_type: data.search_type,
         isLocal: true, // Direct response to local message
       };
