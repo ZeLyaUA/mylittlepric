@@ -729,8 +729,16 @@ func (g *GeminiService) ProcessWithUniversalPrompt(
 		return nil, fmt.Errorf("empty response text from Gemini")
 	}
 
+	// DEBUG: Log raw JSON response from Gemini
+	fmt.Printf("🔍 RAW GEMINI JSON:\n%s\n", responseText)
+
 	var geminiResp models.GeminiResponse
 	err = json.Unmarshal([]byte(responseText), &geminiResp)
+
+	// DEBUG: Log parsed product_description after unmarshal
+	if err == nil {
+		fmt.Printf("🔍 PARSED product_description: '%s'\n", geminiResp.ProductDescription)
+	}
 
 	if err != nil {
 		fmt.Printf("❌ Failed to parse JSON response. Raw response:\n%s\n", responseText)
