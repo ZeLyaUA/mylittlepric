@@ -453,14 +453,26 @@ func (p *ChatProcessor) ProcessChat(req *ChatRequest) *ChatProcessorResponse {
 					response.Type = "text"
 				} else if len(products) > 0 {
 					response.Products = products
-					response.ProductDescription = geminiResponse.ProductDescription // AI-generated description about products
 					response.SearchType = "exact"
 					response.Output = geminiResponse.Output // Use AI's message if provided
 
+					// Product description with fallback
+					productDesc := geminiResponse.ProductDescription
+					if productDesc == "" {
+						// Fallback: Generate description based on query
+						productDesc = p.generateFallbackDescription(query, geminiResponse.Category, req.Language)
+						utils.LogWarn(ctx, "using fallback product description",
+							slog.String("query", query),
+							slog.String("description", productDesc),
+						)
+					}
+					response.ProductDescription = productDesc
+
 					// Log product description for debugging
-					utils.LogInfo(ctx, "product description generated",
-						slog.String("description", geminiResponse.ProductDescription),
+					utils.LogInfo(ctx, "product description set",
+						slog.String("description", productDesc),
 						slog.Int("product_count", len(products)),
+						slog.Bool("is_fallback", geminiResponse.ProductDescription == ""),
 					)
 
 					// Update last product
@@ -805,4 +817,55 @@ func parsePrice(priceStr string) float64 {
 
 	price, _ := strconv.ParseFloat(priceStr, 64)
 	return price
+}
+
+// generateFallbackDescription creates a product description when Gemini fails to provide one
+func (p *ChatProcessor) generateFallbackDescription(query, category, language string) string {
+	// Language-specific templates
+	templates := map[string]map[string]string{
+		"ru": {
+			"brand_specific": "Найдены предложения для %s от различных продавцов.",
+			"parametric":     "Подборка товаров по вашим требованиям: %s",
+			"generic_model":  "Результаты поиска для %s",
+			"unknown":        "Найденные товары по запросу: %s",
+		},
+		"en": {
+			"brand_specific": "Found offers for %s from various sellers.",
+			"parametric":     "Product selection matching your requirements: %s",
+			"generic_model":  "Search results for %s",
+			"unknown":        "Products found for: %s",
+		},
+		"de": {
+			"brand_specific": "Angebote für %s von verschiedenen Händlern gefunden.",
+			"parametric":     "Produktauswahl nach Ihren Anforderungen: %s",
+			"generic_model":  "Suchergebnisse für %s",
+			"unknown":        "Gefundene Produkte für: %s",
+		},
+		"fr": {
+			"brand_specific": "Offres trouvées pour %s de différents vendeurs.",
+			"parametric":     "Sélection de produits correspondant à vos critères: %s",
+			"generic_model":  "Résultats de recherche pour %s",
+			"unknown":        "Produits trouvés pour: %s",
+		},
+	}
+
+	// Default to English if language not found
+	langTemplates, ok := templates[language]
+	if !ok {
+		langTemplates = templates["en"]
+	}
+
+	// Select template based on category
+	template, ok := langTemplates[category]
+	if !ok {
+		template = langTemplates["unknown"]
+	}
+
+	// Clean up query for display
+	cleanQuery := strings.TrimSpace(query)
+	if len(cleanQuery) > 100 {
+		cleanQuery = cleanQuery[:97] + "..."
+	}
+
+	return strings.TrimSpace(strings.ReplaceAll(template, "%s", cleanQuery))
 }
