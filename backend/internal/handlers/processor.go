@@ -399,8 +399,9 @@ func (p *ChatProcessor) ProcessChat(req *ChatRequest) *ChatProcessorResponse {
 						utils.LogError(ctx, "failed to increment anonymous search count", err, slog.String("browser_id", req.BrowserID))
 					}
 				}
-				// Add products to assistant message BEFORE saving
+				// Add products and description to assistant message BEFORE saving
 				assistantMessage.Products = products
+				assistantMessage.ProductDescription = geminiResponse.ProductDescription
 
 				// NEW: Update last search in conversation context
 				productInfoList := make([]models.ProductInfo, 0, len(products))
@@ -491,8 +492,9 @@ func (p *ChatProcessor) ProcessChat(req *ChatRequest) *ChatProcessorResponse {
 							utils.LogError(ctx, "failed to increment anonymous search count", err, slog.String("browser_id", req.BrowserID))
 						}
 					}
-					// Add products to assistant message BEFORE saving
+					// Add products and description to assistant message BEFORE saving
 					assistantMessage.Products = products
+					assistantMessage.ProductDescription = productDesc
 
 					// NEW: Update last search in conversation context
 					productInfoList := make([]models.ProductInfo, 0, len(products))
@@ -819,33 +821,33 @@ func parsePrice(priceStr string) float64 {
 	return price
 }
 
-// generateFallbackDescription creates a product description when Gemini fails to provide one
+// generateFallbackDescription creates a detailed product description when Gemini fails to provide one
 func (p *ChatProcessor) generateFallbackDescription(query, category, language string) string {
-	// Language-specific templates
+	// Language-specific templates with more detail
 	templates := map[string]map[string]string{
 		"ru": {
-			"brand_specific": "Найдены предложения для %s от различных продавцов.",
-			"parametric":     "Подборка товаров по вашим требованиям: %s",
-			"generic_model":  "Результаты поиска для %s",
-			"unknown":        "Найденные товары по запросу: %s",
+			"brand_specific": "Найдены предложения для %s от различных продавцов. Сравните цены, характеристики и условия доставки, чтобы выбрать оптимальный вариант покупки.",
+			"parametric":     "Подборка товаров по вашим требованиям: %s. Все предложения соответствуют указанным параметрам и доступны для заказа.",
+			"generic_model":  "Результаты поиска для %s. Представлены актуальные предложения от проверенных продавцов с различными вариантами доставки и оплаты.",
+			"unknown":        "Найденные товары по запросу: %s. Используйте фильтры и сортировку для выбора подходящего варианта.",
 		},
 		"en": {
-			"brand_specific": "Found offers for %s from various sellers.",
-			"parametric":     "Product selection matching your requirements: %s",
-			"generic_model":  "Search results for %s",
-			"unknown":        "Products found for: %s",
+			"brand_specific": "Found offers for %s from various sellers. Compare prices, specifications, and shipping options to choose the best deal.",
+			"parametric":     "Product selection matching your requirements: %s. All offers meet your specified parameters and are available for order.",
+			"generic_model":  "Search results for %s. Showing current offers from verified sellers with various delivery and payment options.",
+			"unknown":        "Products found for: %s. Use filters and sorting to find your ideal option.",
 		},
 		"de": {
-			"brand_specific": "Angebote für %s von verschiedenen Händlern gefunden.",
-			"parametric":     "Produktauswahl nach Ihren Anforderungen: %s",
-			"generic_model":  "Suchergebnisse für %s",
-			"unknown":        "Gefundene Produkte für: %s",
+			"brand_specific": "Angebote für %s von verschiedenen Händlern gefunden. Vergleichen Sie Preise, Spezifikationen und Versandoptionen für das beste Angebot.",
+			"parametric":     "Produktauswahl nach Ihren Anforderungen: %s. Alle Angebote entsprechen Ihren angegebenen Parametern.",
+			"generic_model":  "Suchergebnisse für %s. Aktuelle Angebote von geprüften Verkäufern mit verschiedenen Liefer- und Zahlungsoptionen.",
+			"unknown":        "Gefundene Produkte für: %s. Nutzen Sie Filter und Sortierung für Ihre ideale Auswahl.",
 		},
 		"fr": {
-			"brand_specific": "Offres trouvées pour %s de différents vendeurs.",
-			"parametric":     "Sélection de produits correspondant à vos critères: %s",
-			"generic_model":  "Résultats de recherche pour %s",
-			"unknown":        "Produits trouvés pour: %s",
+			"brand_specific": "Offres trouvées pour %s de différents vendeurs. Comparez les prix, les spécifications et les options d'expédition pour trouver la meilleure offre.",
+			"parametric":     "Sélection de produits correspondant à vos critères: %s. Toutes les offres respectent vos paramètres spécifiés.",
+			"generic_model":  "Résultats de recherche pour %s. Offres actuelles de vendeurs vérifiés avec diverses options de livraison et de paiement.",
+			"unknown":        "Produits trouvés pour: %s. Utilisez les filtres et le tri pour trouver votre option idéale.",
 		},
 	}
 
@@ -863,8 +865,8 @@ func (p *ChatProcessor) generateFallbackDescription(query, category, language st
 
 	// Clean up query for display
 	cleanQuery := strings.TrimSpace(query)
-	if len(cleanQuery) > 100 {
-		cleanQuery = cleanQuery[:97] + "..."
+	if len(cleanQuery) > 150 {
+		cleanQuery = cleanQuery[:147] + "..."
 	}
 
 	return strings.TrimSpace(strings.ReplaceAll(template, "%s", cleanQuery))

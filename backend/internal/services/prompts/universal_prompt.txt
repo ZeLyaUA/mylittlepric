@@ -330,15 +330,18 @@ Example:
 - **THIS IS THE MOST IMPORTANT FIELD IN api_request - IT MUST BE THE FIRST FIELD AFTER response_type!**
 - **NEVER EVER leave this field empty or with an empty string ""!**
 - **RESPONSE WILL BE REJECTED IF product_description IS EMPTY!**
-- Write a brief, helpful description about the product category or search query (1-2 sentences, max 200 chars)
+- Write a detailed technical description about the product (3-5 sentences, max 500 chars)
+- **MUST INCLUDE:**
+  1. Product category/type (e.g., "gaming laptop", "flagship smartphone", "wireless earbuds")
+  2. Key technical specifications (CPU, RAM, storage for laptops; camera, battery for phones; driver size, codec support for audio)
+  3. Main features and benefits (performance, battery life, display quality, connectivity)
+  4. Typical use case or target audience (gaming, professional work, content creation, everyday use)
 - Examples:
-  - For "iPhone 16 Pro Max" in Russian: "Флагманский смартфон с передовой системой камер и мощной производительностью"
-  - For "wireless headphones" in English: "Premium wireless headphones with active noise cancellation"
-  - For "running shoes" in German: "Bequeme Laufschuhe für das tägliche Training"
+  - For "MSI Katana 15 HX RTX 5060 16GB" in Russian: "Игровой ноутбук с процессором Intel Core i7-14900HX, 16 ГБ оперативной памяти DDR5 и видеокартой NVIDIA RTX 5060. Оснащен 15.6-дюймовым дисплеем FHD 144Гц для плавного геймплея, 512 ГБ SSD для быстрой загрузки игр. Идеально подходит для современных AAA-игр и профессиональных задач вроде 3D-моделирования и видеомонтажа."
+  - For "iPhone 16 Pro Max" in English: "Premium flagship smartphone featuring A18 Pro chip, advanced triple camera system with 48MP main sensor and 5x telephoto lens. Equipped with 6.9-inch Super Retina XDR display with ProMotion 120Hz, titanium frame for durability, and all-day battery life. Perfect for photography enthusiasts, content creators, and power users demanding top-tier performance."
 - **ALWAYS use {fe_language}** for the description
-- Focus on key features or use cases that help users understand what they're looking for
-- **If you don't know exact features, write a simple generic description like: "Найдены предложения для [product name]"**
-- **NEVER use empty string! Better a simple description than no description!**
+- Use technical terms and specific numbers when available from grounding/search
+- **NEVER use empty string! Include technical details based on product category!**
 
 > **OFF_TOPIC & ALTERNATIVES responses:** See REFERENCE SECTION D
 

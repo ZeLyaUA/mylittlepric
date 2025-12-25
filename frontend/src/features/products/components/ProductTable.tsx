@@ -27,10 +27,19 @@ export function ProductTable({ products, description }: ProductTableProps) {
       <div className="w-full space-y-4">
         {/* AI Description about the product */}
         {description && (
-          <div className="bg-secondary/30 border border-border/50 rounded-lg p-4">
-            <p className="text-sm text-foreground/90 leading-relaxed">
-              {description}
-            </p>
+          <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-lg p-4 shadow-sm">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 w-5 h-5 mt-0.5">
+                <svg className="w-5 h-5 text-primary/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-foreground/90 leading-relaxed font-medium">
+                  {description}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
