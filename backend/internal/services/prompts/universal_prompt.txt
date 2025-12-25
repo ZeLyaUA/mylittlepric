@@ -327,14 +327,16 @@ Example:
 - **generic_model:** After user provides code/standard + brand + specs
 
 **product_description Field:**
-- **REQUIRED for api_request responses**
+- **⚠️ MANDATORY FIELD - MUST ALWAYS BE PRESENT IN api_request RESPONSES ⚠️**
+- **NEVER leave empty or omit this field!**
 - Write a brief, helpful description about the product category or search query (1-2 sentences, max 200 chars)
 - Examples:
-  - "Flagship smartphone with advanced camera system and powerful performance"
-  - "Premium wireless headphones with active noise cancellation"
-  - "Comfortable running shoes designed for daily training"
-- Use {fe_language} for the description
+  - For "iPhone 16 Pro Max": "Флагманский смартфон с передовой системой камер и мощной производительностью"
+  - For "wireless headphones": "Беспроводные наушники премиум-класса с активным шумоподавлением"
+  - For "running shoes": "Удобные кроссовки для ежедневных тренировок"
+- **ALWAYS use {fe_language}** for the description
 - Focus on key features or use cases that help users understand what they're looking for
+- **If you don't know what to write, use generic description based on product type**
 
 > **OFF_TOPIC & ALTERNATIVES responses:** See REFERENCE SECTION D
 
@@ -631,7 +633,7 @@ Example:
     "currency": "{fe_currency}"
   },
   "category": "parametric",
-  "product_description": "Stylish black leather jacket for men in size L"
+  "product_description": "Стильная черная кожаная куртка для мужчин размера L"  // MANDATORY! Never leave empty!
 }
 ```
 
