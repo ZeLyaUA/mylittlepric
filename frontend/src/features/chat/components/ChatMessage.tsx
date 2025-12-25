@@ -56,6 +56,15 @@ export function ChatMessage({ message, onQuickReply, onRetry }: ChatMessageProps
   const isPending = message.status === "pending";
   const isFailed = message.status === "failed";
 
+  // Debug: Log product_description when products are present
+  if (message.products && message.products.length > 0) {
+    console.log('📦 Products message:', {
+      productCount: message.products.length,
+      hasDescription: !!message.product_description,
+      description: message.product_description
+    });
+  }
+
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const scrollAmount = 224; // Width of card (210px) + gap (14px)

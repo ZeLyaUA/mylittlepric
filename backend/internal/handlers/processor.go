@@ -457,6 +457,12 @@ func (p *ChatProcessor) ProcessChat(req *ChatRequest) *ChatProcessorResponse {
 					response.SearchType = "exact"
 					response.Output = geminiResponse.Output // Use AI's message if provided
 
+					// Log product description for debugging
+					utils.LogInfo(ctx, "product description generated",
+						slog.String("description", geminiResponse.ProductDescription),
+						slog.Int("product_count", len(products)),
+					)
+
 					// Update last product
 					if len(products) > 0 {
 						price := parsePrice(products[0].Price)

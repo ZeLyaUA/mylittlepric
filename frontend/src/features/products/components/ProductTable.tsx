@@ -12,9 +12,15 @@ interface ProductTableProps {
 
 export function ProductTable({ products, description }: ProductTableProps) {
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   // Helper to check if product is of type Product
   const isProduct = (p: Product | ProductCardType): p is Product => 'thumbnail' in p;
+
+  // Limit to 4 products initially
+  const MAX_VISIBLE = 4;
+  const hasMore = products.length > MAX_VISIBLE;
+  const visibleProducts = showAll ? products : products.slice(0, MAX_VISIBLE);
 
   return (
     <>
@@ -46,7 +52,7 @@ export function ProductTable({ products, description }: ProductTableProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {products.map((product, index) => {
+                {visibleProducts.map((product, index) => {
                   const image = isProduct(product) ? product.thumbnail : product.image;
                   const name = isProduct(product) ? product.title : product.name;
                   const badge = isProduct(product) ? (product.rating ? `⭐ ${product.rating}` : undefined) : product.badge;
@@ -111,6 +117,52 @@ export function ProductTable({ products, description }: ProductTableProps) {
               </tbody>
             </table>
           </div>
+
+          {/* Show More Button - only if there are more than MAX_VISIBLE products */}
+          {hasMore && !showAll && (
+            <div className="relative">
+              {/* Fade overlay */}
+              <div className="absolute inset-x-0 -top-20 h-20 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+
+              {/* Button */}
+              <div className="p-4 bg-card border-t border-border flex justify-center">
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary/90 hover:from-primary hover:to-primary text-primary-foreground font-medium rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 hover:scale-[1.02] group"
+                >
+                  <span>Просмотреть все предложения ({products.length})</span>
+                  <svg
+                    className="w-4 h-4 group-hover:translate-y-0.5 transition-transform"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Show Less Button - when expanded */}
+          {hasMore && showAll && (
+            <div className="p-4 bg-card border-t border-border flex justify-center">
+              <button
+                onClick={() => setShowAll(false)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-lg transition-all duration-200 group"
+              >
+                <span>Свернуть</span>
+                <svg
+                  className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
